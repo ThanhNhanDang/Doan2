@@ -1,6 +1,6 @@
 import { useMqttState } from "mqtt-react-hooks";
-import React, { Fragment } from "react";
-
+import React, { Fragment, useState } from "react";
+import Switch from "react-switch";
 function StatusMQTT() {
   /*
    * Status list
@@ -10,19 +10,19 @@ function StatusMQTT() {
    * - Closed
    * - Error: printed in console too
    */
+  const [checked, setChecked] = useState(false);
   const { client } = useMqttState();
   function handleClick(message) {
     return client.publish("doan2/status/led", message);
   }
 
+  function handleChange(checked) {
+    checked ? handleClick('{"onOff":1}') : handleClick('{"onOff":0}');
+    setChecked(checked);
+  }
   return (
     <Fragment>
-      <button type="button" onClick={() => handleClick("{\"onOff\":0}")}>
-        Disable led
-      </button>
-      <button type="button" onClick={() => handleClick("{\"onOff\":1}")}>
-        On led
-      </button>
+      <Switch onChange={handleChange} checked={checked} />
     </Fragment>
   );
 }
