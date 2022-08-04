@@ -1,0 +1,6 @@
+{
+    "env": {
+        "MQTT_USERNAME":"doan2",
+        "MQTT_PASSWORD":"doan2"
+    }
+}

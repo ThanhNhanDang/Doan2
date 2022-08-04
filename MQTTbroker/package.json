@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "start": "nodemon ./src/MQTTbroker.js"
+  },
+  "dependencies": {
+    "aedes": "^0.46.1",
+    "websocket-stream": "^5.5.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}
