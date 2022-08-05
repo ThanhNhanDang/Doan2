@@ -10,11 +10,11 @@ function App() {
   };
   return (
     <Connector options={options} parserMethod={(msg) => msg}>
-    <BrowserRouter>
-      <Routes>
+      <BrowserRouter>
+        <Routes>
           <Route path="/" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
     </Connector>
   );
 }

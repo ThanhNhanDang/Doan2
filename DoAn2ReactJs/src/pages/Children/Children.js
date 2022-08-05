@@ -16,6 +16,10 @@ function Children() {
       <span>{t.t}</span>
       <br />
       <span>{t.h} %</span>
+      <hr />
+      <span>{t.t1}</span>
+      <br />
+      <span>{t.h1} %</span>
     </Fragment>
   );
 }
