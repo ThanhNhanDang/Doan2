@@ -39,7 +39,6 @@ byte  state[4];  // tạo một mảng có 4 thiết bị để lưu trạng th�
 char  cstr[255];
 byte  m[255];
 byte  buff[255];
-byte  on_off_all_led = 1;
 int   BEGIN = 0;
 int   END = 0;
 int   DesLen = 0;
@@ -77,16 +76,15 @@ StaticJsonDocument<200> jsonBuffer;
 void Start();
 void handle(char* payload);
 void read_sensor();
-void update_and_send_data (byte idtp);
-void update_state();
 void send_data_to_esp_8266 ();
 void receive_data_from_esp_8266();
-void setup_lcd();
 void print_title_lcd();
 void print_value_lcd();
 void print_state_door_lcd();
+void setup_lcd();
+void updateState();
 void door_locker();
-void is_turn_all();
+
 
 void setup()
 {
@@ -114,8 +112,7 @@ void loop()
 
 void Start() {
   read_sensor();
-  is_turn_all();
-  update_state(1, 1, 0); //id, idc, idtp (doan2/status (pub))
+  updateState(1, 1, 1); //id, iddv, idtp
   print_value_lcd();
   receive_data_from_esp_8266();
   print_state_door_lcd();
@@ -201,57 +198,23 @@ void print_value_lcd() {
   }
 }
 
-void update_and_send_data (byte idtp) {
-  update_state(1, 1, idtp); //id, iddv, idtp
-  send_data_to_esp_8266 ();
-}
-
-void is_turn_all() {
-  for (int i = 0; i < 4; i++)
-    if (digitalRead(LedPins[i])) {
-      on_off_all_led = 1;
-      return;
-    }
-  on_off_all_led = 0;
-}
-
 void handle(char* payload) {
-  /*
-    idtp = 0: doan2/status  (pub)
-    idtp = 1: doan2/onOff/feedback  (pub)
-    idtp = 2: doan2/onOff/led (sub)
-    idtp = 3: doan2/onOff/door (sub)
-    idtp = 4: doan2/onOff/led/all (sub)
-  */
-
   deserializeJson(doc, payload);         // Khởi tạo một document có kích thước động là 2kb để phân tích chuỗi Json truyền vào
   JsonObject obj = doc.as<JsonObject>(); // Tạo 1 obj có kiểu dữ liệu là JsonObject với document vừa tạo
 
   byte onOff = obj["onOff"];                // ID thiết bị
   byte iddv = obj["iddv"];
-  byte idtp = obj["idtp"];              // ID topic
-  switch (idtp) {
-    case 2: // doan2/onOff/led (sub)
-      digitalWrite(LedPins[iddv - 1], !onOff);
-      break;
-    case 3: // doan2/onOff/door (sub)
-      is_lock = onOff;
-      digitalWrite(LedPins[iddv - 1], onOff);
-      time_locker = millis ();
-      break;
-    case 4: // doan2/onOff/led/all (sub)
-      for (int i = 0; i < 4; i++) {
-        digitalWrite(LedPins[i], !on_off_all_led);
-      }
-      on_off_all_led = !on_off_all_led;
-      break;
-    default: break;
-  }
-  is_turn_all();
-  update_and_send_data(1); // doan2/onOff/feedback (pub)
+  iddv == 5 ? is_lock = onOff;
+  byte getState = obj["getState"];              // ID thiết bị
+  if (getState == 0)
+    digitalWrite(LedPins[iddv - 1], !onOff);
+  for (int i = 0; i < 100; i++) // vòng lặp chạy từ 0-99 để reset mảng cstr
+    cstr[i] = 0;
+  updateState(1, 1, 2); //id, iddv, idtp
+  send_data_to_esp_8266 ();
 }
 
-void update_state(byte id, byte idc, byte idtp) {
+void updateState(byte id, byte idc, byte idtp) {
   char  tmpBuf[20]; // Bộ đệm để lưu trữ giá trị
   jsonBuffer["id"] = id;
   jsonBuffer["idc"] = idc;  // id connect vd: arduino mega2560
@@ -260,11 +223,10 @@ void update_state(byte id, byte idc, byte idtp) {
   jsonBuffer["h"] = dtostrf(humid, 0, 1, tmpBuf);
   jsonBuffer["t1"] = dtostrf(temp1, 0, 1, tmpBuf);
   jsonBuffer["h1"] = dtostrf(humid1, 0, 1, tmpBuf);
-  jsonBuffer["l1"] = !digitalRead(LedPins[0]);
-  jsonBuffer["l2"] = !digitalRead(LedPins[1]);
-  jsonBuffer["l3"] = !digitalRead(LedPins[2]);
-  jsonBuffer["l4"] = !digitalRead(LedPins[3]);
-  jsonBuffer["al"] = !on_off_all_led;
+  jsonBuffer["r1"] = !digitalRead(LedPins[0]);
+  jsonBuffer["r2"] = !digitalRead(LedPins[1]);
+  jsonBuffer["r3"] = !digitalRead(LedPins[2]);
+  jsonBuffer["r4"] = !digitalRead(LedPins[3]);
   jsonBuffer["d"] = digitalRead(SERVO_PIN);
   JsonObject rootJson = jsonBuffer.as<JsonObject>();
   serializeJson(rootJson, cstr);
@@ -294,6 +256,7 @@ void read_sensor()
 }
 
 void  send_data_to_esp_8266 () {
+  //  Serial.println(cstr);
   yield();                                        // Delay một khoản thời gian rất ngắn
   rsa.Send(cstr);                                 // Gửi chuỗi cstr qua device
 }
@@ -331,12 +294,10 @@ void door_locker() {
     if (millis() - time_locker > t ) {
       if (ID == UID && is_lock == 0 )
         is_lock = 1;
-      else if (ID == UID && is_lock == 1 )
+      else if (ID == UID && is_lock == 1 ) 
         is_lock = 0;
       else
         is_lock = 0;
-      digitalWrite(SERVO_PIN, is_lock);
-      update_and_send_data(1); // doan2/onOff/feedback (pub)
       time_locker = millis ();
     }
     timer.handle();
@@ -344,8 +305,6 @@ void door_locker() {
   if (is_lock)
     if (millis() - time_locker > 10000) {
       is_lock = 0;
-      digitalWrite(SERVO_PIN, is_lock);
-      update_and_send_data(1); // doan2/onOff/feedback (pub)
       time_locker = millis ();
     }
 }

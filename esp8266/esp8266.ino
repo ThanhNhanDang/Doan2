@@ -93,8 +93,9 @@ void reconnect()
     if (client.connect("ESP8266Client", mqtt_user, mqtt_pwd)) //kết nối vào broker
     {
       Serial.println("Đã kết nối:");
-      client.subscribe("doan2/onOff/led"); //đăng kí nhận dữ liệu từ topic IoT47_MQTT_Test
-      client.subscribe("doan2/getState");
+      client.subscribe("doan2/onOff/led"); //đăng kí topic đễ nhận dữ liệu từ client
+      client.subscribe("doan2/onOff/led/all");
+      client.subscribe("doan2/onOff/door");
     }
     else
     {
@@ -115,11 +116,11 @@ void handle(String payload) {
   byte idgw = obj["id"];                // ID getway
   if (idc == 1 && idgw == 1) {
     switch (idtp) {
-      case 1:
+      case 0:
         client.publish("doan2/status", (char*)m); // gửi dữ liệu lên topic doan2/status
         break;
-      case 2:
-        client.publish("doan2/onOff/led/feedback", (char*)m); // gửi dữ liệu phản hồi điều khiển nút nhấn lên topic doan2/status/led
+      case 1:
+        client.publish("doan2/onOff/feedback", (char*)m); // gửi dữ liệu phản hồi điều khiển nút nhấn lên topic doan2/onOff/feedback
         break;
       default: break;
     }

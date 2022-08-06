@@ -9,37 +9,27 @@ function StatusMQTT() {
    * - Reconnecting
    * - Closed
    * - Error: printed in console too
+   * idtp = 1: doan2/status
+   * idtp = 2: doan2/onOff/led
+   * idtp = 3: doan2/onOff/door
    */
-  const { message } = useSubscription([
-    "doan2/onOff/led/feedback",
-    "doan2/status",
-  ]);
-  const [checks, setChecks] = useState([false, false, false, false]);
-  const ledPins = [1, 2, 3, 4];
+  const { message } = useSubscription(["doan2/onOff/feedback", "doan2/status"]);
+  const [checks, setChecks] = useState([false, false, false, false, false]);
+  const [checkAll, setCheckAll] = useState(false);
+
+  const ledPins = [1, 2, 3, 4, 5];
 
   useEffect(() => {
     if (message) {
       let json = JSON.parse(message.message);
-      switch (message.topic) {
-        case "doan2/onOff/led/feedback":
-          setChecks([
-            json.r1 ? true : false,
-            json.r2 ? true : false,
-            json.r3 ? true : false,
-            json.r4 ? true : false,
-          ]);
-          break;
-        case "doan2/status":
-          setChecks([
-            json.r1 ? true : false,
-            json.r2 ? true : false,
-            json.r3 ? true : false,
-            json.r4 ? true : false,
-          ]);
-          break;
-        default:
-          break;
-      }
+      setChecks([
+        json.l1 ? true : false,
+        json.l2 ? true : false,
+        json.l3 ? true : false,
+        json.l4 ? true : false,
+        json.d ? true : false,
+      ]);
+      setCheckAll(json.al ? true : false);
     }
   }, [message]);
 
@@ -53,6 +43,9 @@ function StatusMQTT() {
           <br />
         </Fragment>
       ))}
+      <hr />
+      <label htmlFor="">Turn all led</label>
+      <ReactSwitch checked={checkAll} idtp={4} />
       <hr />
     </Fragment>
   );

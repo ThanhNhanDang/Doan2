@@ -208,11 +208,8 @@ void update_and_send_data (byte idtp) {
 
 void is_turn_all() {
   for (int i = 0; i < 4; i++)
-    if (digitalRead(LedPins[i])) {
+    if (digitalRead(LedPins[i]))
       on_off_all_led = 1;
-      return;
-    }
-  on_off_all_led = 0;
 }
 
 void handle(char* payload) {
@@ -247,7 +244,7 @@ void handle(char* payload) {
       break;
     default: break;
   }
-  is_turn_all();
+
   update_and_send_data(1); // doan2/onOff/feedback (pub)
 }
 
@@ -296,6 +293,7 @@ void read_sensor()
 void  send_data_to_esp_8266 () {
   yield();                                        // Delay một khoản thời gian rất ngắn
   rsa.Send(cstr);                                 // Gửi chuỗi cstr qua device
+  Serial.println(cstr);
 }
 
 void receive_data_from_esp_8266() {
@@ -335,7 +333,6 @@ void door_locker() {
         is_lock = 0;
       else
         is_lock = 0;
-      digitalWrite(SERVO_PIN, is_lock);
       update_and_send_data(1); // doan2/onOff/feedback (pub)
       time_locker = millis ();
     }
@@ -344,8 +341,6 @@ void door_locker() {
   if (is_lock)
     if (millis() - time_locker > 10000) {
       is_lock = 0;
-      digitalWrite(SERVO_PIN, is_lock);
-      update_and_send_data(1); // doan2/onOff/feedback (pub)
       time_locker = millis ();
     }
 }
