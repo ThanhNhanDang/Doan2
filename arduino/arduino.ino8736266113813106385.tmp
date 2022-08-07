@@ -36,7 +36,7 @@ byte last_button_led_states [] = {0, 0, 0, 0, 0};  //{led 1, led 2, led 3, led 4
 const byte ButtonPinsLed[] = {button_led1, button_led2, button_led3, button_led4, button_led_all};
 
 unsigned long last_button_debounce_time = 0;  // the last time the output pin was toggled
-unsigned long debounce_delay = 40;    // the debounce time; increase if the output flickers
+unsigned long debounce_delay = 50;    // the debounce time; increase if the output flickers
 
 String UID = "SEQD3SEQAASEQ62SEQA3SEQB8";
 byte is_open_door = 0;
@@ -200,11 +200,10 @@ void read_button() {
       if (button_door_state == HIGH) {
         is_open_door = 0;
         is_wrong_card = 0;
-        is_turn_all();
-        update_and_send_data(1); // doan2/onOff/feedback (pub)
       }
     }
   }
+
   last_button_door_state = reading1;
 
   for (int i = 0; i < output; i++) {
@@ -223,13 +222,14 @@ void read_button() {
             }
             on_off_all_led = !on_off_all_led;
           }
-          is_turn_all();
-          update_and_send_data(1); // doan2/onOff/feedback (pub)
         }
       }
     }
     last_button_led_states[i] = reading;
   }
+
+  is_turn_all();
+  update_and_send_data(1); // doan2/onOff/feedback (pub)
 }
 
 void Start() {

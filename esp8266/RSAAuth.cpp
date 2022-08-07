@@ -13,7 +13,7 @@ extern "C" {
 #include "RSAAuth.h"
 
 
-SoftwareSerial swSer(D2, D1, false, 256); //D2, D1 = SRX, STX
+SoftwareSerial swSer(D2, D4, false, 256); //D2, D1 = SRX, STX
 RSAAuth::RSAAuth()
 {
 
