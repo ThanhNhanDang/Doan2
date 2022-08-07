@@ -66,7 +66,7 @@ DS3231  ds3231(SDA, SCL);
 AsyncTimer timer;
 
 LiquidCrystal_I2C lcd20x4(0x27, 20, 4); // Set the LCD I2C address (display 1)
-LiquidCrystal_I2C lcd16x2(0x26, 16, 2);// display 2
+LiquidCrystal_I2C lcd16x2(68, 16, 2);// display 2
 
 //LiquidCrystal_I2C lcd16x2(0x27, 16,2);  // Set the LCD I2C address
 DHT dht11(DHTPin1, DHTTYPE1);                // Cấu hình cảm biến DHT11 với chân data và loại cảm biến

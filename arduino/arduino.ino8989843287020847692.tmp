@@ -5,7 +5,6 @@
 #include <LiquidCrystal_I2C.h>
 #include <AsyncTimer.h>
 #include <SPI.h>
-#include <DS3231.h>
 /* Include the RFID library */
 #include <RFID.h>
 
@@ -18,8 +17,6 @@
 #define SERVO_PIN 3
 #define SDA_DIO 8  // Define the DIO used for the SDA (SS) and RST (reset) pins.
 #define RESET_DIO 9
-#define SDA 20
-#define SCL 21
 
 String UID = "SEQD3SEQAASEQ62SEQA3SEQB8";
 byte is_lock = 0;
@@ -62,12 +59,8 @@ byte degree[8] = {
 
 /* Create an instance of the RFID library */
 RFID RC522(SDA_DIO, RESET_DIO);
-DS3231  ds3231(SDA, SCL);
 AsyncTimer timer;
-
-LiquidCrystal_I2C lcd20x4(0x27, 20, 4); // Set the LCD I2C address (display 1)
-LiquidCrystal_I2C lcd16x2(0x26, 16, 2);// display 2
-
+LiquidCrystal_I2C lcd20x4(0x27, 20, 4); // Set the LCD I2C address
 //LiquidCrystal_I2C lcd16x2(0x27, 16,2);  // Set the LCD I2C address
 DHT dht11(DHTPin1, DHTTYPE1);                // Cấu hình cảm biến DHT11 với chân data và loại cảm biến
 DHT dht22(DHTPin2, DHTTYPE2);                // Cấu hình cảm biến DHT22 với chân data và loại cảm biến
@@ -105,7 +98,6 @@ void setup()
   Serial1.begin(BAUD_RATE); // Tốc độ giao tiếp UART giữa 2 thiết bị 115200 bit/s
   timer.setInterval(send_data_to_esp_8266, sending_time);
   timer.setInterval(Start, 0);
-  ds3231.begin();
   dht22.begin();
   dht11.begin();
   SPI.begin();
@@ -134,9 +126,6 @@ void Start() {
 void setup_lcd() {
   lcd20x4.init();
   lcd20x4.backlight();
-  
-  lcd16x2.init();
-  lcd16x2.backlight();
   lcd20x4.createChar(1, degree);
   //  print_title_lcd();
 }
@@ -176,10 +165,6 @@ void print_title_lcd() {
 }
 
 void print_value_lcd() {
-  lcd20x4.setCursor(0,0);
-  lcd20x4.print("Time:  ");
-  lcd20x4.print(ds3231.getTimeStr());
-  
   lcd20x4.setCursor(0, 1);
   lcd20x4.print("NB:");
   lcd20x4.print(temp1);
@@ -367,11 +352,11 @@ void door_locker() {
 }
 
 void print_state_door_lcd() {
-  lcd16x2.setCursor(0, 0);
+  lcd20x4.setCursor(0, 0);
   if (is_lock == 1)
-    lcd16x2.print("Door is open  ");
+    lcd20x4.print("Door is open  ");
   else if (is_lock == 0)
-    lcd16x2.print("Door is locked");
+    lcd20x4.print("Door is locked");
   else if (ID != UID)
-    lcd16x2.print("Wrong card!   ");
+    lcd20x4.print("Wrong card!   ");
 }
