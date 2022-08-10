@@ -1,6 +1,8 @@
 import { Connector } from "mqtt-react-hooks";
 import Dashboard from "./pages/Dashboard/Dashboard";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+import ButtonAppBar from "./components/ButtonAppBar/ButtonAppBar";
+
 function App() {
   const options = {
     hostname: "116.118.48.230",
@@ -10,11 +12,10 @@ function App() {
   };
   return (
     <Connector options={options} parserMethod={(msg) => msg}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-        </Routes>
-      </BrowserRouter>
+      <ButtonAppBar />
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+      </Routes>
     </Connector>
   );
 }
