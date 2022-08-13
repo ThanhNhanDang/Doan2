@@ -6,7 +6,7 @@
 //116.118.48.230
 //192.168.43.32
 // Thông tin về wifi
-#define ssid "Hai Anh"
+#define ssid "NhanSgu"
 #define password "123456789"
 #define mqtt_server "116.118.48.230"
 #define mqtt_user "doan2"         // Tài khoản đăng nhập broker
@@ -17,7 +17,7 @@ const uint16_t mqtt_port = 1883; //Port của CloudMQTT TCP
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-
+StaticJsonDocument<200> jsonBuffer;
 DynamicJsonDocument doc(2048); // Khởi tạo document Jon động với dữ liệu được lưu trong bộ nhớ heap
 // trong đề tài này chúng em sử dụng 2kb <=> 2028 byte
 // khuyến khích document có kích thước lớn hơn 1kb
@@ -76,6 +76,7 @@ void setup_wifi()
 // Hàm call back để nhận dữ liệu
 void callback(char* topic, byte* payload, unsigned int length)
 {
+
   for (int i = 0; i < length; i++) {
     cstr[i] = 0;
     cstr[i] = (char)payload[i];

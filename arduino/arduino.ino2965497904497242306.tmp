@@ -14,37 +14,37 @@
 #define DHTTYPE2   DHT22    // Cảm biến sử dụng
 #define DHTPin2    A1       // Chân cảm biến 
 #define BAUD_RATE  115200                       // Tốc độ giao tiếp UART BAUD_RATE bit/s
-#define OUTPUT_NUM 5
+#define output 5
 #define SERVO_PIN 3
 #define SDA_DIO 8  // Define the DIO used for the SDA (SS) and RST (reset) pins.
 #define RESET_DIO 9
 #define SDA 20
 #define SCL 21
-#define BUTTON_DOOR 48
-#define BUTTON_LED1 44
-#define BUTTON_LED2 45
-#define BUTTON_LED3 46
-#define BUTTON_LED4 47
-#define BUTTON_LED_ALL 49
+#define button_door 48
+#define button_led1 44
+#define button_led2 45
+#define button_led3 46
+#define button_led4 47
+#define button_led_all 49
 
 byte button_door_state;             // the current reading from the input pin
 byte last_button_door_state = LOW;   // the previous reading from the input pin
 
-byte button_led_states [OUTPUT_NUM] = {0, 0, 0, 0, 0};    // {led 1, led 2, led 3, led 4, led all}
-byte last_button_led_states [OUTPUT_NUM] = {0, 0, 0, 0, 0};  //{led 1, led 2, led 3, led 4, led all}
+byte button_led_states [] = {0, 0, 0, 0, 0};    // {led 1, led 2, led 3, led 4, led all}
+byte last_button_led_states [] = {0, 0, 0, 0, 0};  //{led 1, led 2, led 3, led 4, led all}
 
-const byte BUTTON_PINS_LED[OUTPUT_NUM] = {BUTTON_LED1, BUTTON_LED2, BUTTON_LED3, BUTTON_LED4, BUTTON_LED_ALL};
+const byte BUTTON_PINS_LED[] = {button_led1, button_led2, button_led3, button_led4, button_led_all};
 
-unsigned long last_button_debounce_time = 0;  // the last time the OUTPUT_NUM pin was toggled
-unsigned long debounce_delay = 40;    // the debounce time; increase if the OUTPUT_NUM flickers
+unsigned long last_button_debounce_time = 0;  // the last time the output pin was toggled
+unsigned long debounce_delay = 40;    // the debounce time; increase if the output flickers
 
 String UID = "SEQD3SEQAASEQ62SEQA3SEQB8";
 byte is_open_door = 0;
 byte is_wrong_card = 0;
 
-const String FULLNAME = "Dang Thanh Nhan";
-const String MSSV = "3119510032";
-const byte OUTPUT_PINS [OUTPUT_NUM] = {4, 5, 6, 7, SERVO_PIN}; // Chân led door, led1, led2, led3, led4
+const String fullname = "Dang Thanh Nhan";
+const String mssv = "3119510032";
+const byte LED_PINS [5] = {4, 5, 6, 7, SERVO_PIN}; // Chân led door, led1, led2, led3, led4
 byte check_value_lcd_G_S = 0;
 byte check_value_lcd_ds3231 = 0;
 unsigned long current_display_lcd_G_S_time = 0;
@@ -152,11 +152,11 @@ void read_button();
 
 void setup()
 {
-  for (int i = 0; i < OUTPUT_NUM; i++) {
-    pinMode(OUTPUT_PINS[i], OUTPUT);
-    digitalWrite(OUTPUT_PINS[i], 0);
+  for (int i = 0; i < output; i++) {
+    pinMode(LED_PINS[i], OUTPUT);
+    digitalWrite(LED_PINS[i], 0);
   }
-  pinMode(BUTTON_DOOR, INPUT);
+  pinMode(button_door, INPUT);
   Serial.begin(BAUD_RATE);    // Tốc độ giao tiếp với máy tính
   Serial1.begin(BAUD_RATE); // Tốc độ giao tiếp UART giữa 2 thiết bị 115200 bit/s
   timer.setInterval(send_data_to_esp_8266, sending_time);
@@ -179,7 +179,7 @@ void loop()
 void read_button() {
   // read the state of the switch into a local variable:
 
-  int reading1 = digitalRead(BUTTON_DOOR);
+  int reading1 = digitalRead(button_door);
 
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
@@ -207,7 +207,7 @@ void read_button() {
   }
   last_button_door_state = reading1;
 
-  for (int i = 0; i < OUTPUT_NUM; i++) {
+  for (int i = 0; i < output; i++) {
     int reading = digitalRead(BUTTON_PINS_LED[i]);
     if (reading != last_button_led_states[i])
       last_button_debounce_time = millis();
@@ -215,11 +215,11 @@ void read_button() {
       if (reading != button_led_states[i]) {
         button_led_states[i] = reading;
         if (button_led_states[i] == HIGH) {
-          if (BUTTON_PINS_LED[i] != BUTTON_LED_ALL)
-            digitalWrite(OUTPUT_PINS[i], !digitalRead(OUTPUT_PINS[i]));
+          if (BUTTON_PINS_LED[i] != button_led_all)
+            digitalWrite(LED_PINS[i], !digitalRead(LED_PINS[i]));
           else {
             for (int i = 0; i < 4; i++) {
-              digitalWrite(OUTPUT_PINS[i], !on_off_all_led);
+              digitalWrite(LED_PINS[i], !on_off_all_led);
             }
             on_off_all_led = !on_off_all_led;
           }
@@ -264,8 +264,8 @@ void display_lcd_title() {
   lcd20x4.setCursor(6, 1);
   lcd20x4.print("Wellcome");
   lcd20x4.setCursor(2, 2);
-  for (int i = 0; i < FULLNAME.length(); i++) {
-    lcd20x4.print(FULLNAME[i]);
+  for (int i = 0; i < fullname.length(); i++) {
+    lcd20x4.print(fullname[i]);
     delay(250);
   }
   lcd20x4.cursor();
@@ -276,8 +276,8 @@ void display_lcd_title() {
   delay(500);
   lcd20x4.noCursor();
   lcd20x4.setCursor(5, 3);
-  for (int i = 0; i < MSSV.length(); i++) {
-    lcd20x4.print(MSSV[i]);
+  for (int i = 0; i < mssv.length(); i++) {
+    lcd20x4.print(mssv[i]);
     delay(250);
   }
 
@@ -326,7 +326,7 @@ void display_lcd_value() {
   lcd20x4.setCursor(0, 3);
   lcd20x4.print("L:");
   for (int i = 0; i < 4; i++) {
-    lcd20x4.print(digitalRead(OUTPUT_PINS[i]));
+    lcd20x4.print(digitalRead(LED_PINS[i]));
   }
 
   lcd20x4.print(", ");
@@ -397,7 +397,7 @@ void update_and_send_data (byte idtp) {
 
 void is_turn_all() {
   for (int i = 0; i < 4; i++)
-    if (!digitalRead(OUTPUT_PINS[i])) {
+    if (!digitalRead(LED_PINS[i])) {
       on_off_all_led = 0;
       return;
     }
@@ -421,16 +421,16 @@ void handle(char* payload) {
   byte idtp = obj["idtp"];              // ID topic
   switch (idtp) {
     case 2: // doan2/onOff/led (sub)
-      digitalWrite(OUTPUT_PINS[iddv - 1], onOff);
+      digitalWrite(LED_PINS[iddv - 1], onOff);
       break;
     case 3: // doan2/onOff/door (sub)
       is_open_door = onOff;
-      digitalWrite(OUTPUT_PINS[iddv - 1], onOff);
+      digitalWrite(LED_PINS[iddv - 1], onOff);
       current_lock_door_time = millis ();
       break;
     case 4: // doan2/onOff/led/all (sub)
       for (int i = 0; i < 4; i++) {
-        digitalWrite(OUTPUT_PINS[i], onOff);
+        digitalWrite(LED_PINS[i], onOff);
       }
       on_off_all_led = onOff;
       break;
@@ -449,10 +449,10 @@ void update_state(byte id, byte idc, byte idtp) {
   jsonBuffer["h"] = dtostrf(humid, 0, 1, tmpBuf);
   jsonBuffer["t1"] = dtostrf(temp1, 0, 1, tmpBuf);
   jsonBuffer["h1"] = dtostrf(humid1, 0, 1, tmpBuf);
-  jsonBuffer["l1"] = digitalRead(OUTPUT_PINS[0]);
-  jsonBuffer["l2"] = digitalRead(OUTPUT_PINS[1]);
-  jsonBuffer["l3"] = digitalRead(OUTPUT_PINS[2]);
-  jsonBuffer["l4"] = digitalRead(OUTPUT_PINS[3]);
+  jsonBuffer["l1"] = digitalRead(LED_PINS[0]);
+  jsonBuffer["l2"] = digitalRead(LED_PINS[1]);
+  jsonBuffer["l3"] = digitalRead(LED_PINS[2]);
+  jsonBuffer["l4"] = digitalRead(LED_PINS[3]);
   jsonBuffer["al"] = on_off_all_led;
   jsonBuffer["d"] = digitalRead(SERVO_PIN);
   JsonObject rootJson = jsonBuffer.as<JsonObject>();
