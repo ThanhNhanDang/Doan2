@@ -1,7 +1,11 @@
 import { useSubscription } from "mqtt-react-hooks";
 import React, { Fragment, useEffect, useState } from "react";
 import ReactSwitch from "../../components/ReactSwitch/ReactSwitch";
-import StatusMQTT from "../StatusMQTT/StatusMQTT";
+import { styled, createTheme } from "@mui/material/styles";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Unstable_Grid2";
+import { Box } from "@mui/system";
+import { ThemeProvider } from "@emotion/react";
 
 function Dashboard() {
   /*
@@ -14,6 +18,14 @@ function Dashboard() {
   const [checkAll, setCheckAll] = useState(false);
 
   const ledPins = [1, 2, 3, 4, 5];
+
+  const Item = styled(Paper)(({ theme }) => ({
+    textAlign: "center",
+    color: theme.palette.text.secondary,
+    height: 60,
+    lineHeight: "60px",
+  }));
+  const lightTheme = createTheme({ palette: { mode: "light" } });
 
   useEffect(() => {
     if (message) {
@@ -31,7 +43,44 @@ function Dashboard() {
 
   return (
     <Fragment>
-      <StatusMQTT />
+      <Grid container spacing={2}>
+        <Grid xs={12} sx={{ paddingBottom: 4 }}>
+          <Item></Item>
+        </Grid>
+
+        <Grid item xs={4}>
+          <ThemeProvider theme={lightTheme}>
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: "background.default",
+                display: "grid",
+                gridTemplateColumns: { md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              {ledPins.map((value, index) => (
+                <Item key={value} elevation={8}>
+                  <ReactSwitch checked={checks[index]} value={value} />
+                  <br />
+                </Item>
+              ))}
+            </Box>
+          </ThemeProvider>
+        </Grid>
+        <Grid xs={6}>
+          <Item>xs=6</Item>
+        </Grid>
+        <Grid xs={4}>
+          <Item>xs=4</Item>
+        </Grid>
+        <Grid xs={4}>
+          <Item>xs=4</Item>
+        </Grid>
+        <Grid xs={4}>
+          <Item>xs=4</Item>
+        </Grid>
+      </Grid>
 
       <hr />
       {ledPins.map((value, index) => (
