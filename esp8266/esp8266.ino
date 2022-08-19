@@ -3,14 +3,12 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-//116.118.48.230
-//192.168.43.32
 // Thông tin về wifi
-#define ssid "NhanSgu"
+#define ssid "Hai Anh"
 #define password "123456789"
-#define mqtt_server "116.118.48.230"
+#define mqtt_server "116.118.48.230"  //ip broker mqtt
 #define mqtt_user "doan2"         // Tài khoản đăng nhập broker
-#define mqtt_pwd  "doan2"    // Mật khẩu đăng nhập broker
+#define mqtt_pwd  "doan2"   // Mật khẩu đăng nhập broker
 const uint16_t mqtt_port = 1883; //Port của CloudMQTT TCP
 
 #define BAUD_RATE 115200                       // Tốc độ giao tiếp UART BAUD_RATE bit/s
@@ -76,7 +74,6 @@ void setup_wifi()
 // Hàm call back để nhận dữ liệu
 void callback(char* topic, byte* payload, unsigned int length)
 {
-
   for (int i = 0; i < length; i++) {
     cstr[i] = 0;
     cstr[i] = (char)payload[i];
@@ -94,9 +91,12 @@ void reconnect()
     if (client.connect("ESP8266Client", mqtt_user, mqtt_pwd)) //kết nối vào broker
     {
       Serial.println("Đã kết nối:");
+      client.subscribe("doan2/getState");
       client.subscribe("doan2/onOff/led"); //đăng kí topic đễ nhận dữ liệu từ client
       client.subscribe("doan2/onOff/led/all");
       client.subscribe("doan2/onOff/door");
+      client.subscribe("doan2/onOff/fan");
+      client.subscribe("doan2/onOff/fan/all");
     }
     else
     {
@@ -120,8 +120,8 @@ void handle(String payload) {
       case 0:
         client.publish("doan2/status", (char*)m); // gửi dữ liệu lên topic doan2/status
         break;
-      case 1:
-        client.publish("doan2/onOff/feedback", (char*)m); // gửi dữ liệu phản hồi điều khiển nút nhấn lên topic doan2/onOff/feedback
+         case 1:
+        client.publish("doan2/onOff/feedback", (char*)m); // gửi dữ liệu lên topic doan2/status
         break;
       default: break;
     }

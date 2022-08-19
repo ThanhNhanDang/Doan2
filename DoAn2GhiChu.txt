@@ -1,0 +1,4 @@
+-Khi hệ thống mất điện có báo trên website hay điện thoại không (Chưa).
+-Điều khiển đóng tắt bằng tay (có).
+-Thông minh có nghĩa là thay thế con người làm một việc gì đó.
+-Ví dụ như không có ai ở nhà nó tự động tắt đèn

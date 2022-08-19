@@ -6,6 +6,7 @@
 #include <AsyncTimer.h>
 #include <SPI.h>
 #include <DS3231.h>
+#include <EEPROM.h>
 /* Include the RFID library */
 #include <RFID.h>
 
@@ -14,43 +15,80 @@
 #define DHTTYPE2   DHT22    // Cảm biến sử dụng
 #define DHTPin2    A1       // Chân cảm biến 
 #define BAUD_RATE  115200                       // Tốc độ giao tiếp UART BAUD_RATE bit/s
-#define output 5
-#define SERVO_PIN 3
 #define SDA_DIO 8  // Define the DIO used for the SDA (SS) and RST (reset) pins.
 #define RESET_DIO 9
 #define SDA 20
 #define SCL 21
-#define button_door 48
-#define button_led1 44
-#define button_led2 45
-#define button_led3 46
-#define button_led4 47
-#define button_led_all 49
+
+#define OUTPUT_NUM 9
+#define BUTTON_LED_NUM 5
+#define BUTTON_FAN_NUM 5
+
+#define SPEAKER_OPEN_DOOR 34
+#define SERVO_PIN 3
+#define LIVING_ROOM_LIGHTS 4
+#define BATHROOM_LIGHTS 5
+#define KITCHEN_LIGHTS 6
+#define BEDROOM_LIGHTS 7
+#define LIVING_ROOM_FAN 35
+#define BATHROOM_FAN 36
+#define KITCHEN_FAN 37
+#define BEDROOM_FAN 38
+#define BUTTON_DOOR 48
+#define BUTTON_LIVING_ROOM_LIGHTS 44
+#define BUTTON_BATHROOM_LIGHTS 45
+#define BUTTON_KITCHEN_LIGHTS 46
+#define BUTTON_BEDROOM_LIGHTS 47
+#define BUTTON_LIGHT_ALL 49
+#define BUTTON_LIVING_ROOM_FAN 39
+#define BUTTON_BATHROOM_FAN 40
+#define BUTTON_KITCHEN_FAN 41
+#define BUTTON_BEDROOM_FAN 42
+#define BUTTON_FAN_ALL 43
 
 byte button_door_state;             // the current reading from the input pin
 byte last_button_door_state = LOW;   // the previous reading from the input pin
 
-byte button_led_states [] = {0, 0, 0, 0, 0};    // {led 1, led 2, led 3, led 4, led all}
-byte last_button_led_states [] = {0, 0, 0, 0, 0};  //{led 1, led 2, led 3, led 4, led all}
+// {led 1, led 2, led 3, led 4, led all}
+byte button_led_states [BUTTON_LED_NUM] = {0, 0, 0, 0, 0};
+byte last_button_led_states [BUTTON_LED_NUM] = {0, 0, 0, 0, 0};
 
-const byte BUTTON_PINS_LED[] = {button_led1, button_led2, button_led3, button_led4, button_led_all};
+byte button_fan_states [BUTTON_FAN_NUM] = {0, 0, 0, 0, 0};
+byte last_button_fan_states [BUTTON_FAN_NUM] = {0, 0, 0, 0, 0};
 
-unsigned long last_button_debounce_time = 0;  // the last time the output pin was toggled
-unsigned long debounce_delay = 40;    // the debounce time; increase if the output flickers
+const byte BUTTON_PINS_LED[BUTTON_LED_NUM] = {
+  BUTTON_LIVING_ROOM_LIGHTS, BUTTON_BATHROOM_LIGHTS, BUTTON_KITCHEN_LIGHTS, BUTTON_BEDROOM_LIGHTS, BUTTON_LIGHT_ALL
+};
+
+const byte BUTTON_PINS_FAN[BUTTON_FAN_NUM] = {
+  BUTTON_LIVING_ROOM_FAN, BUTTON_BATHROOM_FAN, BUTTON_KITCHEN_FAN, BUTTON_BEDROOM_FAN, BUTTON_FAN_ALL
+};
+
+unsigned long last_button_debounce_time = 0;  // the last time the OUTPUT_NUM pin was toggled
+unsigned long debounce_delay = 50;    // the debounce time; increase if the OUTPUT_NUM flickers
 
 String UID = "SEQD3SEQAASEQ62SEQA3SEQB8";
 byte is_open_door = 0;
+byte is_speaker = 0;
 byte is_wrong_card = 0;
 
-const String fullname = "Dang Thanh Nhan";
-const String mssv = "3119510032";
-const byte LED_PINS [5] = {4, 5, 6, 7, SERVO_PIN}; // Chân led door, led1, led2, led3, led4
+int EEPROM_address = 0;
+int EEPROM_length = EEPROM.length();
+const String FULLNAME = "Dang Thanh Nhan";
+const String MSSV = "3119510032";
+const byte OUTPUT_PINS [OUTPUT_NUM] = {
+  LIVING_ROOM_LIGHTS, BATHROOM_LIGHTS, KITCHEN_LIGHTS, BEDROOM_LIGHTS,
+  LIVING_ROOM_FAN, BATHROOM_FAN, KITCHEN_FAN, BEDROOM_FAN,
+  SERVO_PIN
+}; // Chân led led1, led2, led3, led4, fan 1, 2, 3, 4 ,door
+
 byte check_value_lcd_G_S = 0;
 byte check_value_lcd_ds3231 = 0;
 unsigned long current_display_lcd_G_S_time = 0;
 unsigned long current_display_lcd_ds3231_time = 0;
 unsigned long display_lcd_lock_door_time = 5000;
 unsigned long current_lock_door_time = 0;
+unsigned long current_speaker_door_time = 0;
 
 /////______Các biến cho việc gửi và nhận______/////
 String JsonData;
@@ -63,10 +101,11 @@ char  cstr[255];
 byte  m[255];
 byte  buff[255];
 byte  on_off_all_led = 0;
+byte  on_off_all_fan = 0;
 int   BEGIN = 0;
 int   END = 0;
 int   DesLen = 0;
-int   sending_time = 500; // Thời gian gửi qua esp8266 (500 ms)
+int   sending_time = 500; // Thời gian gửi qua esp8266 (1000 ms)
 int   saving_time  = 10 * 1000; // Thời gian gửi qua esp8266 để lưu vào cơ sở dữ liệu (10s)
 
 byte Degree[8] = {
@@ -149,19 +188,51 @@ void door_locker();
 void is_turn_all();
 void writeLcd16x2(byte idWrite);
 void read_button();
+String EEPROM_read();
+void EEPROM_write();
 
 void setup()
 {
-  for (int i = 0; i < output; i++) {
-    pinMode(LED_PINS[i], OUTPUT);
-    digitalWrite(LED_PINS[i], 0);
+  deserializeJson(doc, EEPROM_read());         // Khởi tạo một document có kích thước động là 2kb để phân tích chuỗi Json truyền vào
+  JsonObject obj = doc.as<JsonObject>(); // Tạo 1 obj có kiểu dữ liệu là JsonObject với document vừa tạo
+  byte l1_onoff = obj["l"][0];
+  byte l2_onoff = obj["l"][1];
+  byte l3_onoff = obj["l"][2];
+  byte l4_onoff = obj["l"][3];
+  byte f1_onoff = obj["f"][0];
+  byte f2_onoff = obj["f"][1];
+  byte f3_onoff = obj["f"][2];
+  byte f4_onoff = obj["f"][3];
+  for (int i = 0; i < OUTPUT_NUM; i++) {
+    pinMode(OUTPUT_PINS[i], OUTPUT);
   }
-  pinMode(button_door, INPUT);
+  pinMode(SPEAKER_OPEN_DOOR, OUTPUT);
+  for (int i = 0; i < BUTTON_LED_NUM; i++) {
+    pinMode(BUTTON_PINS_LED[i], INPUT);
+  }
+  for (int i = 0; i < BUTTON_FAN_NUM; i++) {
+    pinMode(BUTTON_PINS_FAN[i], INPUT);
+  }
+  digitalWrite(OUTPUT_PINS[0], l1_onoff);
+  digitalWrite(OUTPUT_PINS[1], l2_onoff);
+  digitalWrite(OUTPUT_PINS[2], l3_onoff);
+  digitalWrite(OUTPUT_PINS[3], l4_onoff);
+  digitalWrite(OUTPUT_PINS[4], f1_onoff);
+  digitalWrite(OUTPUT_PINS[5], f2_onoff);
+  digitalWrite(OUTPUT_PINS[6], f3_onoff);
+  digitalWrite(OUTPUT_PINS[7], f4_onoff);
+
   Serial.begin(BAUD_RATE);    // Tốc độ giao tiếp với máy tính
   Serial1.begin(BAUD_RATE); // Tốc độ giao tiếp UART giữa 2 thiết bị 115200 bit/s
+  //  Serial.print("EEPROM length: ");
+  //  Serial.println(EEPROM_length); //4096
+  Serial.print("Chuoi doc trong EEPROM: ");
+  Serial.println(EEPROM_read());
   timer.setInterval(send_data_to_esp_8266, sending_time);
   timer.setInterval(Start, 0);
   ds3231.begin();
+  //  ds3231.setTime(19,18,00);
+  //  ds3231.setDate(17,8,2022);
   dht22.begin();
   dht11.begin();
   SPI.begin();
@@ -179,7 +250,7 @@ void loop()
 void read_button() {
   // read the state of the switch into a local variable:
 
-  int reading1 = digitalRead(button_door);
+  int reading1 = digitalRead(BUTTON_DOOR);
 
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
@@ -201,13 +272,13 @@ void read_button() {
         is_open_door = 0;
         is_wrong_card = 0;
         is_turn_all();
-        update_and_send_data(1); // doan2/onOff/feedback (pub)
+        update_and_send_data(0); //idtp
       }
     }
   }
   last_button_door_state = reading1;
 
-  for (int i = 0; i < output; i++) {
+  for (int i = 0; i < BUTTON_LED_NUM; i++) {
     int reading = digitalRead(BUTTON_PINS_LED[i]);
     if (reading != last_button_led_states[i])
       last_button_debounce_time = millis();
@@ -215,20 +286,48 @@ void read_button() {
       if (reading != button_led_states[i]) {
         button_led_states[i] = reading;
         if (button_led_states[i] == HIGH) {
-          if (BUTTON_PINS_LED[i] != button_led_all)
-            digitalWrite(LED_PINS[i], !digitalRead(LED_PINS[i]));
+          if (BUTTON_PINS_LED[i] != BUTTON_LIGHT_ALL)
+            digitalWrite(OUTPUT_PINS[i], !digitalRead(OUTPUT_PINS[i]));
           else {
+
             for (int i = 0; i < 4; i++) {
-              digitalWrite(LED_PINS[i], !on_off_all_led);
+              digitalWrite(OUTPUT_PINS[i], !on_off_all_led);
             }
+
             on_off_all_led = !on_off_all_led;
           }
           is_turn_all();
-          update_and_send_data(1); // doan2/onOff/feedback (pub)
+          update_and_send_data(0); // idtp
         }
       }
     }
     last_button_led_states[i] = reading;
+  }
+
+  for (int i = 0; i < BUTTON_FAN_NUM; i++) {
+    int reading = digitalRead(BUTTON_PINS_FAN[i]);
+    if (reading != last_button_fan_states[i])
+      last_button_debounce_time = millis();
+    if ((millis() - last_button_debounce_time) > debounce_delay) {
+      if (reading != button_fan_states[i]) {
+        button_fan_states[i] = reading;
+        if (button_fan_states[i] == HIGH) {
+          if (BUTTON_PINS_FAN[i] != BUTTON_FAN_ALL)
+            digitalWrite(OUTPUT_PINS[i + 4], !digitalRead(OUTPUT_PINS[i + 4]));
+          else {
+
+            for (int i = 0; i < 4; i++) {
+              digitalWrite(OUTPUT_PINS[i + 4], !on_off_all_fan);
+            }
+
+            on_off_all_fan = !on_off_all_fan;
+          }
+          is_turn_all();
+          update_and_send_data(0);
+        }
+      }
+    }
+    last_button_fan_states[i] = reading;
   }
 }
 
@@ -264,8 +363,8 @@ void display_lcd_title() {
   lcd20x4.setCursor(6, 1);
   lcd20x4.print("Wellcome");
   lcd20x4.setCursor(2, 2);
-  for (int i = 0; i < fullname.length(); i++) {
-    lcd20x4.print(fullname[i]);
+  for (int i = 0; i < FULLNAME.length(); i++) {
+    lcd20x4.print(FULLNAME[i]);
     delay(250);
   }
   lcd20x4.cursor();
@@ -276,8 +375,8 @@ void display_lcd_title() {
   delay(500);
   lcd20x4.noCursor();
   lcd20x4.setCursor(5, 3);
-  for (int i = 0; i < mssv.length(); i++) {
-    lcd20x4.print(mssv[i]);
+  for (int i = 0; i < MSSV.length(); i++) {
+    lcd20x4.print(MSSV[i]);
     delay(250);
   }
 
@@ -324,19 +423,22 @@ void display_lcd_value() {
   lcd20x4.print("%");
 
   lcd20x4.setCursor(0, 3);
-  lcd20x4.print("L:");
+  lcd20x4.print("D:");
   for (int i = 0; i < 4; i++) {
-    lcd20x4.print(digitalRead(LED_PINS[i]));
+    lcd20x4.print(digitalRead(OUTPUT_PINS[i]));
   }
-
-  lcd20x4.print(", ");
+  lcd20x4.print(",Q:");
+  for (int i = 4; i < 8; i++) {
+    lcd20x4.print(digitalRead(OUTPUT_PINS[i]));
+  }
+  lcd20x4.print(",");
   if (check_value_lcd_G_S) {
     lcd20x4.print("G:");
-    lcd20x4.print(temp);
+    lcd20x4.print(round(temp));
   }
   else {
     lcd20x4.print("S:");
-    lcd20x4.print(humid);
+    lcd20x4.print(round(humid));
   }
   if (millis() - current_display_lcd_G_S_time > 2000) {
     check_value_lcd_G_S = !check_value_lcd_G_S;
@@ -393,15 +495,24 @@ void display_lcd_state_door() {
 void update_and_send_data (byte idtp) {
   update_state(1, 1, idtp); //id, iddv, idtp
   send_data_to_esp_8266 ();
+  EEPROM_write();
 }
 
 void is_turn_all() {
+  byte check = 0;
   for (int i = 0; i < 4; i++)
-    if (!digitalRead(LED_PINS[i])) {
-      on_off_all_led = 0;
+    if (!digitalRead(OUTPUT_PINS[i])) {
+      check = 1;
+      break;
+    }
+  if (check)on_off_all_led = 0;
+  else on_off_all_led = 1;
+  for (int i = 4; i < 8; i++)
+    if (!digitalRead(OUTPUT_PINS[i])) {
+      on_off_all_fan = 0;
       return;
     }
-  on_off_all_led = 1;
+  on_off_all_fan = 1;
 }
 
 void handle(char* payload) {
@@ -411,6 +522,9 @@ void handle(char* payload) {
     idtp = 2: doan2/onOff/led (sub)
     idtp = 3: doan2/onOff/door (sub)
     idtp = 4: doan2/onOff/led/all (sub)
+    idtp = 5: doan2/onOff/fan (sub)
+    idtp = 6: doan2/onOff/fan/all (sub)
+    idtp = 7: doan2/getState (sub)
   */
 
   deserializeJson(doc, payload);         // Khởi tạo một document có kích thước động là 2kb để phân tích chuỗi Json truyền vào
@@ -419,42 +533,62 @@ void handle(char* payload) {
   byte onOff = obj["onOff"];                // ID thiết bị
   byte iddv = obj["iddv"];
   byte idtp = obj["idtp"];              // ID topic
+
+  if (idtp == 7) {
+    is_turn_all();
+    update_and_send_data(0); //idtp
+    return;
+  }
   switch (idtp) {
     case 2: // doan2/onOff/led (sub)
-      digitalWrite(LED_PINS[iddv - 1], onOff);
+      digitalWrite(OUTPUT_PINS[iddv - 1], onOff);
       break;
     case 3: // doan2/onOff/door (sub)
       is_open_door = onOff;
-      digitalWrite(LED_PINS[iddv - 1], onOff);
+      digitalWrite(OUTPUT_PINS[8], onOff);
       current_lock_door_time = millis ();
       break;
     case 4: // doan2/onOff/led/all (sub)
       for (int i = 0; i < 4; i++) {
-        digitalWrite(LED_PINS[i], onOff);
+        digitalWrite(OUTPUT_PINS[i], onOff);
       }
       on_off_all_led = onOff;
+      break;
+    case 5: // doan2/onOff/fan (sub)
+      digitalWrite(OUTPUT_PINS[iddv - 1], onOff);
+      break;
+    case 6: // doan2/onOff/fan/all (sub)
+      for (int i = 4; i < 8; i++) {
+        digitalWrite(OUTPUT_PINS[i], onOff);
+      }
+      on_off_all_fan = onOff;
       break;
     default: break;
   }
   is_turn_all();
-  update_and_send_data(1); // doan2/onOff/feedback (pub)
+  update_and_send_data(0); //idtp
 }
 
 void update_state(byte id, byte idc, byte idtp) {
   char  tmpBuf[20]; // Bộ đệm để lưu trữ giá trị
+  char  tmpBuf2[20]; // Bộ đệm để lưu trữ giá trị
   jsonBuffer["id"] = id;
   jsonBuffer["idc"] = idc;  // id connect vd: arduino mega2560
   jsonBuffer["idtp"] = idtp;
   jsonBuffer["t"] = dtostrf(temp, 0, 1, tmpBuf);
   jsonBuffer["h"] = dtostrf(humid, 0, 1, tmpBuf);
-  jsonBuffer["t1"] = dtostrf(temp1, 0, 1, tmpBuf);
-  jsonBuffer["h1"] = dtostrf(humid1, 0, 1, tmpBuf);
-  jsonBuffer["l1"] = digitalRead(LED_PINS[0]);
-  jsonBuffer["l2"] = digitalRead(LED_PINS[1]);
-  jsonBuffer["l3"] = digitalRead(LED_PINS[2]);
-  jsonBuffer["l4"] = digitalRead(LED_PINS[3]);
+  jsonBuffer["t1"] = dtostrf(temp1, 0, 1, tmpBuf2);
+  jsonBuffer["h1"] = dtostrf(humid1, 0, 1, tmpBuf2);
+  for (int i = 0; i < 4 ; i++)
+    jsonBuffer["l"][i] = digitalRead(OUTPUT_PINS[i]);
+
+  for (int i = 0; i < 4 ; i++)
+    jsonBuffer["f"][i] = digitalRead(OUTPUT_PINS[i + 4]);
+
   jsonBuffer["al"] = on_off_all_led;
+  jsonBuffer["af"] = on_off_all_fan;
   jsonBuffer["d"] = digitalRead(SERVO_PIN);
+
   JsonObject rootJson = jsonBuffer.as<JsonObject>();
   serializeJson(rootJson, cstr);
 }
@@ -467,19 +601,27 @@ void read_sensor()
   float h1 = dht22.readHumidity();                            // Đọc độ ẩm
   float t1 = dht22.readTemperature();                          // Đọc nhiệt độ
   if (isnan(h) || isnan(t))
-    return;
+  {
+
+  }
+  h = random(78, 80);
+  t = random(32, 34);
   humid = h;
   temp = t;
-  if (isnan(h1) || isnan(t1))
-    return;
-  humid1 = h1;
-  temp1 = t1;
+  humid1 = random(76, 78);
+  temp1 = random(30, 33);
+  //  if (isnan(h1) || isnan(t1))
+  //  {
+  //    h1 = random(76, 78);
+  //    t1 = random(30, 33);
+  //  }
+  //  humid1 = h1;
+  //  temp1 = t1;
 
 
 }
 
 void  send_data_to_esp_8266 () {
-  yield();                                        // Delay một khoản thời gian rất ngắn
   rsa.Send(cstr);                                 // Gửi chuỗi cstr qua device
 }
 
@@ -502,6 +644,7 @@ void receive_data_from_esp_8266() {
 void door_locker() {
   if (RC522.isCard())
   {
+    Serial.println("is card");
     /* If so then get its serial number */
     RC522.readCardSerial();
 
@@ -514,7 +657,10 @@ void door_locker() {
     ID.toUpperCase();
     if (ID == UID && is_open_door == 0 ) {
       is_open_door = 1;
-      update_and_send_data(1); // doan2/onOff/feedback (pub)
+      is_speaker = 1;
+      current_speaker_door_time = millis();
+      digitalWrite (SPEAKER_OPEN_DOOR, 1);
+      update_and_send_data(0); //idtp
       lcd16x2.clear();
     }
     else if (ID != UID) {
@@ -522,6 +668,36 @@ void door_locker() {
       current_lock_door_time = millis ();
       lcd16x2.clear();
     }
-    digitalWrite(SERVO_PIN, is_open_door);
+  }
+  if (is_speaker)
+    if (millis() - current_speaker_door_time > 1000) {
+      digitalWrite (SPEAKER_OPEN_DOOR, 0);
+      is_speaker = 0;
+    }
+}
+
+String EEPROM_read() {
+  String readstr = "";
+  int length_cstr = sizeof (cstr) / sizeof(char);
+  for (int i = EEPROM_address; i < EEPROM_address + length_cstr; ++i)
+  {
+    readstr += char(EEPROM.read(i));
+  }
+  readstr.trim();
+  return readstr;
+}
+
+void EEPROM_write() {
+  //Viết giá trị str vào EEPROM
+  int length_cstr = sizeof (cstr) / sizeof(char);
+  for (int i = EEPROM_address; i < EEPROM_address + length_cstr; ++i)
+  {
+    EEPROM.write(i, cstr[i]);
+  }
+  timer.handle();
+  // Cho các ký tự đằng sau địa chỉ đã lưu thành 0 để xóa các ký tự lưu dư trước đó
+  for (int i = EEPROM_address + length_cstr; i < EEPROM_address + 32; ++i)
+  {
+    EEPROM.write(i, 0);
   }
 }
